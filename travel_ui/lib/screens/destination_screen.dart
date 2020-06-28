@@ -15,7 +15,7 @@ class _DestinationScreenState extends State<DestinationScreen> {
   Text _buildRating(int rating) {
     String stars = '';
     for (int i = 0; i < rating; i++) {
-      stars += '🤩🤩⭐';
+      stars += '⭐';
     }
     stars.trim();
     return Text(stars);
@@ -29,9 +29,12 @@ class _DestinationScreenState extends State<DestinationScreen> {
           Stack(
             children: <Widget>[
               Container(
-                height: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height / 2,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30.0),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(30.0),
+                    bottomRight: Radius.circular(30.0),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black26,
@@ -43,7 +46,10 @@ class _DestinationScreenState extends State<DestinationScreen> {
                 child: Hero(
                   tag: widget.destination.imageUr,
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(30.0),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(30.0),
+                      bottomRight: Radius.circular(30.0),
+                    ),
                     child: Image(
                       image: AssetImage(widget.destination.imageUr),
                       fit: BoxFit.cover,
