@@ -61,14 +61,15 @@ class _CreateBlogState extends State<CreateBlog> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Flutter',
+              'Create',
               style: TextStyle(
                 fontSize: 22.0,
                 color: Colors.white,
               ),
             ),
+            SizedBox(width: 8.0),
             Text(
-              'Blog',
+              'Instant',
               style: TextStyle(
                 fontSize: 22.0,
                 color: Colors.blue,
@@ -79,15 +80,28 @@ class _CreateBlogState extends State<CreateBlog> {
         backgroundColor: Colors.transparent,
         elevation: 0.0,
         actions: <Widget>[
-          GestureDetector(
-            onTap: () {
-              uploadBlog();
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: Icon(Icons.file_upload),
-            ),
-          ),
+          selectedImage != null
+              ? GestureDetector(
+                  onTap: () {
+                    uploadBlog();
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: _loading
+                        ? SizedBox(width: 0.0)
+                        : Icon(
+                            Icons.file_upload,
+                            color: Colors.white,
+                          ),
+                  ),
+                )
+              : Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Icon(
+                    Icons.file_upload,
+                    color: Colors.white54,
+                  ),
+                ),
         ],
       ),
       body: _loading
