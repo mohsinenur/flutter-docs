@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_social_clone/pages/home_page.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(MyApp());
 }
 
@@ -10,28 +12,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
+      title: 'Mookul',
       theme: ThemeData(
         primarySwatch: Colors.grey,
         cardColor: Colors.white70,
         accentColor: Colors.black,
         scaffoldBackgroundColor: Colors.black,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+        dialogBackgroundColor: Colors.black,
       ),
-      home: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'Welcome',
-            style: TextStyle(color: Colors.white, fontSize: 20.0),
-          ),
-        ),
-        body: Center(
-          child: Text(
-            'Hello World',
-            style: TextStyle(fontSize: 30.0, color: Colors.white),
-          ),
-        ),
-      ),
+      home: HomePage(),
     );
   }
 }
