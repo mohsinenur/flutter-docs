@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_social_clone/models/user.dart';
@@ -11,6 +12,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 final GoogleSignIn gSignIn = GoogleSignIn();
 final usersReference = Firestore.instance.collection("users");
+final postsReference = Firestore.instance.collection("posts");
+final StorageReference storageReference =
+    FirebaseStorage.instance.ref().child('post_pictures');
 final DateTime timestamp = DateTime.now();
 User currentUser;
 
@@ -118,23 +122,23 @@ class _HomePageState extends State<HomePage> {
 
   Scaffold buildHomeScreen() {
     return Scaffold(
-      body: SafeArea(
-        child: PageView(
-          children: <Widget>[
+      body: PageView(
+        children: <Widget>[
 //          TimeLinePage(),
-            RaisedButton.icon(
-                onPressed: logoutUser,
-                icon: Icon(Icons.close),
-                label: Text('Logout')),
-            SearchPage(),
-            UploadPage(),
-            NotificationsPage(),
-            ProfilePage(),
-          ],
-          controller: pageController,
-          onPageChanged: whenPageChanges,
-          physics: NeverScrollableScrollPhysics(),
-        ),
+          RaisedButton.icon(
+              onPressed: logoutUser,
+              icon: Icon(Icons.close),
+              label: Text('Logout')),
+          SearchPage(),
+          UploadPage(gCurrentUser: currentUser),
+          NotificationsPage(),
+          ProfilePage(
+            userProfileId: currentUser,
+          ),
+        ],
+        controller: pageController,
+        onPageChanged: whenPageChanges,
+        physics: NeverScrollableScrollPhysics(),
       ),
       bottomNavigationBar: CupertinoTabBar(
         currentIndex: getPageIndex,
