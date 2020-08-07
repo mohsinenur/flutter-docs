@@ -1,13 +1,19 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:iwalletapp/api/api.dart';
+import 'package:iwalletapp/helper/toast_maker.dart';
 import 'package:iwalletapp/screens/forgot_password_screen.dart';
 import 'package:iwalletapp/screens/home_screen.dart';
 import 'package:iwalletapp/widgets/banner.dart';
 import 'package:otp_text_field/otp_text_field.dart';
 import 'package:otp_text_field/style.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+bool _isLoading = false;
+String otp = "";
 
 class OTPVerificationRegScreen extends StatefulWidget {
   @override
@@ -94,20 +100,17 @@ class _OTPVerificationRegScreenState extends State<OTPVerificationRegScreen> {
                                 ),
                                 SizedBox(height: 10.0),
                                 OTPTextField(
-                                  length: 4,
+                                  length: 5,
                                   width: MediaQuery.of(context).size.width,
-                                  fieldWidth: 50,
+                                  fieldWidth: 45,
                                   style: TextStyle(fontSize: 17),
                                   textFieldAlignment:
                                       MainAxisAlignment.spaceAround,
                                   fieldStyle: FieldStyle.box,
                                   onCompleted: (pin) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => HomeScreen(),
-                                      ),
-                                    );
+                                    setState(() {
+                                      otp = pin;
+                                    });
                                   },
                                 ),
                                 SizedBox(height: 30.0),
@@ -145,38 +148,35 @@ class _OTPVerificationRegScreenState extends State<OTPVerificationRegScreen> {
                                   ),
                                 ),
                                 SizedBox(height: 40.0),
-                                RawMaterialButton(
-                                  fillColor: Color(0xFFFADB39),
-                                  splashColor: Colors.grey,
-                                  padding: EdgeInsets.all(10.0),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6.0),
-                                  ),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => HomeScreen(),
-                                      ),
-                                    );
-                                  },
-                                  child: Padding(
-                                    padding: EdgeInsets.all(10.0),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.max,
-                                      children: const <Widget>[
-                                        Text(
-                                          'VERIFY',
-                                          maxLines: 1,
-                                          style: TextStyle(
-                                            fontSize: 16.0,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      ],
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FlatButton(
+                                    color: Color(0xFFFADB39),
+                                    splashColor: Colors.grey,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6.0),
                                     ),
+                                    child: _isLoading
+                                        ? CircularProgressIndicator(
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              Color(0xFFFADB39),
+                                            ),
+                                          )
+                                        : Padding(
+                                            padding: EdgeInsets.all(20.0),
+                                            child: Text(
+                                              'VERIFY',
+                                              maxLines: 1,
+                                              style: TextStyle(
+                                                fontSize: 16.0,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                    onPressed: _isLoading
+                                        ? null
+                                        : _handleOtpVerification,
                                   ),
                                 ),
                               ],
@@ -193,5 +193,67 @@ class _OTPVerificationRegScreenState extends State<OTPVerificationRegScreen> {
         ),
       ),
     );
+  }
+
+  void _handleOtpVerification() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    if (otp == null || otp == "") {
+      ToastMaker().simpleToast('Please enter OTP');
+    } else {
+      var data = {
+        'name': agentData['name'],
+        'address': agentData['address'],
+        'mobile_number': agentData['mobile_number'],
+        'dob': agentData['dob'],
+        'email': agentData['email'],
+        'password': agentData['password'],
+        'password_confirmation': agentData['password_confirmation'],
+        'otp': otp,
+        'photo': agentData['photo'],
+        'verification_doc': agentData['verification_doc'],
+      };
+
+      print(data);
+
+      try {
+        FormData formData = new FormData.fromMap(data);
+        Response response =
+            await CallApi().postData(formData, 'wallet/agent-signup-complete');
+        Map responseBody = response.data;
+        print(responseBody);
+        if (responseBody['code'] != null) {
+          if (responseBody['code'] == 200) {
+            if (responseBody['message'] != null) {
+              ToastMaker().simpleToast(responseBody['message']);
+            }
+            SharedPreferences localStorage =
+                await SharedPreferences.getInstance();
+            localStorage.setString('agent', json.encode(data));
+
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => HomeScreen(),
+              ),
+            );
+          } else {
+            if (responseBody['message'] != null) {
+              ToastMaker().simpleToast(responseBody['message']);
+            } else {
+              ToastMaker().simpleToast('Something went wrong!');
+            }
+          }
+        }
+      } catch (e) {
+        ToastMaker().simpleToast('Something went wrong!');
+      }
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 }

@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'package:iwalletapp/helper/device_info.dart';
+import 'package:iwalletapp/helper/enums.dart';
 
 class CallApi {
-  final String _url = 'https://65ae3297acc1.ngrok.io/api/v1/';
+  final String _url = 'https://fa605d179ae1.ngrok.io/api/v1/';
   Dio dio = Dio();
   var deviceId = DeviceInfo().findDeviceId();
 
@@ -32,5 +33,6 @@ class CallApi {
         'Content-type': 'application/json',
         'Accept': 'application/json',
         'device-id': deviceId,
+        'app-service': APP_SERVICE,
       };
 }

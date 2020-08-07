@@ -1,8 +1,15 @@
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:iwalletapp/api/api.dart';
+import 'package:iwalletapp/helper/check_internet.dart';
+import 'package:iwalletapp/helper/toast_maker.dart';
 import 'package:iwalletapp/screens/otp_verification_screen.dart';
 import 'package:iwalletapp/screens/registration_screen.dart';
 import 'package:iwalletapp/widgets/banner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'forgot_password_screen.dart';
 
@@ -12,6 +19,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  TextEditingController passwordController = TextEditingController();
+  TextEditingController phoneController = TextEditingController();
+  bool _isLoading = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,6 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 SizedBox(height: 10.0),
                                 TextField(
+                                  controller: phoneController,
                                   minLines: 1,
                                   maxLines: 1,
                                   autocorrect: false,
@@ -104,6 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 SizedBox(height: 10.0),
                                 TextField(
+                                  controller: passwordController,
                                   minLines: 1,
                                   maxLines: 1,
                                   autocorrect: false,
@@ -129,38 +141,33 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                                 SizedBox(height: 20.0),
-                                RawMaterialButton(
-                                  fillColor: Color(0xFFFADB39),
-                                  splashColor: Colors.grey,
-                                  padding: EdgeInsets.all(10.0),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6.0),
-                                  ),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => OTPVerificationScreen(),
-                                      ),
-                                    );
-                                  },
-                                  child: Padding(
-                                    padding: EdgeInsets.all(10.0),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.max,
-                                      children: const <Widget>[
-                                        Text(
-                                          'LOGIN',
-                                          maxLines: 1,
-                                          style: TextStyle(
-                                            fontSize: 16.0,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      ],
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FlatButton(
+                                    color: Color(0xFFFADB39),
+                                    splashColor: Colors.grey,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6.0),
                                     ),
+                                    child: _isLoading
+                                        ? CircularProgressIndicator(
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              Color(0xFFFADB39),
+                                            ),
+                                          )
+                                        : Padding(
+                                            padding: EdgeInsets.all(20.0),
+                                            child: Text(
+                                              'LOGIN',
+                                              maxLines: 1,
+                                              style: TextStyle(
+                                                fontSize: 16.0,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                    onPressed: _isLoading ? null : _handleLogin,
                                   ),
                                 ),
                                 SizedBox(height: 10.0),
@@ -238,5 +245,64 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  void _handleLogin() async {
+    bool internetConnected = await CheckInternet().checkInternet();
+
+    if (internetConnected != true) {
+      return ToastMaker().simpleErrorToast('Check your internet connection.');
+    }
+    FocusScope.of(context).requestFocus(FocusNode());
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    var data = {
+      'mobile_number': phoneController.text,
+      'password': passwordController.text,
+    };
+
+    try {
+      FormData formData = new FormData.fromMap(data);
+      Response response = await CallApi().postData(formData, 'login');
+      Map responseBody = response.data;
+      print(responseBody);
+      if (responseBody['code'] != null) {
+        if (responseBody['code'] == 200) {
+          print(responseBody['code']);
+          if (responseBody['message'] != null) {
+            ToastMaker().simpleToast(responseBody['message']);
+          }
+          SharedPreferences localStorage =
+              await SharedPreferences.getInstance();
+          localStorage.setString('agent', jsonEncode(data));
+          print(data);
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OTPVerificationScreen(),
+            ),
+          );
+        } else {
+          if (responseBody['message'] != null) {
+            ToastMaker().simpleErrorToast(responseBody['message']);
+          } else {
+            ToastMaker().simpleErrorToast('Something went wrong!');
+          }
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print(e);
+      ToastMaker().simpleErrorToast('Something went wrong!!');
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 }

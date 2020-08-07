@@ -1,13 +1,19 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image/image.dart' as ImD;
+import 'package:image_picker/image_picker.dart';
 import 'package:iwalletapp/api/api.dart';
+import 'package:iwalletapp/helper/check_internet.dart';
 import 'package:iwalletapp/helper/toast_maker.dart';
 import 'package:iwalletapp/screens/otp_verification_reg_screen.dart';
 import 'package:iwalletapp/widgets/header_appbar.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 class RegistrationScreen extends StatefulWidget {
   @override
@@ -26,6 +32,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   TextEditingController confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
+  final picker = ImagePicker();
+  File selectedImage;
+  bool uploading = false;
+  String imageName = Uuid().v4();
 
   Future<Null> _selectDate(BuildContext context) async {
     final DateTime picked = await showDatePicker(
@@ -96,12 +106,27 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   ),
                                 ),
                                 SizedBox(height: 20.0),
-                                Center(
-                                  child: Image(
-                                    image: AssetImage(
-                                        'assets/images/add_photo.png'),
-                                    width: 100.0,
+                                InkWell(
+                                  child: Center(
+                                    child: selectedImage != null
+                                        ? ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(50.0),
+                                            child: Image.file(
+                                              selectedImage,
+                                              width: 100.0,
+                                              height: 100.0,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          )
+                                        : Image(
+                                            image: AssetImage(
+                                                'assets/images/add_photo.png'),
+                                            width: 100.0,
+                                            height: 100.0,
+                                          ),
                                   ),
+                                  onTap: () => _selectProfileImage(),
                                 ),
                                 SizedBox(height: 20.0),
                                 Text(
@@ -391,20 +416,27 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   child: FlatButton(
                                     color: Color(0xFFFADB39),
                                     splashColor: Colors.grey,
-                                    padding: EdgeInsets.all(20.0),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(6.0),
                                     ),
-                                    child: Text(
-                                      _isLoading
-                                          ? 'REGISTRATION...'
-                                          : 'REGISTRATION',
-                                      maxLines: 1,
-                                      style: TextStyle(
-                                        fontSize: 16.0,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
+                                    child: _isLoading
+                                        ? CircularProgressIndicator(
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              Color(0xFFFADB39),
+                                            ),
+                                          )
+                                        : Padding(
+                                            padding: EdgeInsets.all(20.0),
+                                            child: Text(
+                                              'REGISTRATION',
+                                              maxLines: 1,
+                                              style: TextStyle(
+                                                fontSize: 16.0,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
                                     onPressed:
                                         _isLoading ? null : _handleRegistration,
                                   ),
@@ -425,10 +457,45 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
+  void _selectProfileImage() async {
+    var pickedFile = await picker.getImage(source: ImageSource.gallery);
+    setState(
+      () {
+        selectedImage = File(pickedFile.path);
+      },
+    );
+  }
+
+  compressingPhoto() async {
+    final tDirectory = await getTemporaryDirectory();
+    final path = tDirectory.path;
+    ImD.Image mImageFile = ImD.decodeImage(selectedImage.readAsBytesSync());
+    final compressedImageFile = File('$path/img_$imageName.jpg')
+      ..writeAsBytesSync(ImD.encodeJpg(mImageFile, quality: 90));
+    setState(() {
+      selectedImage = compressedImageFile;
+    });
+  }
+
   void _handleRegistration() async {
+    bool internetConnected = await CheckInternet().checkInternet();
+
+    if (internetConnected != true) {
+      return ToastMaker().simpleErrorToast('Check your internet connection.');
+    }
+    FocusScope.of(context).requestFocus(FocusNode());
+
     setState(() {
       _isLoading = true;
     });
+
+//    if (selectedImage == null) {
+//      setState(() {
+//        _isLoading = false;
+//      });
+//      return ToastMaker().simpleErrorToast('Please add profile picture.');
+//    }
+    await compressingPhoto();
 
     var data = {
       'name': nameController.text,
@@ -438,22 +505,28 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       'email': emailController.text,
       'password': passwordController.text,
       'password_confirmation': confirmPasswordController.text,
+      'verification_doc': '',
+      'photo': selectedImage,
     };
+
+    print(data);
 
     try {
       FormData formData = new FormData.fromMap(data);
       Response response =
           await CallApi().postData(formData, 'wallet/agent-signup');
       Map responseBody = response.data;
+      print(responseBody);
       if (responseBody['code'] != null) {
         if (responseBody['code'] == 200) {
+          print(responseBody['code']);
           if (responseBody['message'] != null) {
             ToastMaker().simpleToast(responseBody['message']);
           }
           SharedPreferences localStorage =
               await SharedPreferences.getInstance();
-          localStorage.setString('agent', json.encode(data));
-
+          localStorage.setString('agent', jsonEncode(data));
+          print(data);
           await Navigator.push(
             context,
             MaterialPageRoute(
@@ -462,14 +535,18 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           );
         } else {
           if (responseBody['message'] != null) {
-            ToastMaker().simpleToast(responseBody['message']);
+            ToastMaker().simpleErrorToast(responseBody['message']);
           } else {
-            ToastMaker().simpleToast('Something went wrong!');
+            ToastMaker().simpleErrorToast('Something went wrong!');
           }
         }
       }
     } catch (e) {
-      ToastMaker().simpleToast('Something went wrong!');
+      setState(() {
+        _isLoading = false;
+      });
+      print(e);
+      ToastMaker().simpleErrorToast('Something went wrong!!');
     }
 
     setState(() {
