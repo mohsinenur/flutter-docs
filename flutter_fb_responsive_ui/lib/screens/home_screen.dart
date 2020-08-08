@@ -51,6 +51,17 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(0.0, 5.0, 0.0, 5.0),
+            sliver: SliverToBoxAdapter(
+              child: Container(
+                child: Stories(
+                  currentUser: currentUser,
+                  stories: stories,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
